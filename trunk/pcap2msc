@@ -1,0 +1,87 @@
+#!/usr/bin/python
+
+import sys
+import subprocess
+import re
+
+def usage():
+  print >>sys.stderr, '%s: <.pcap> [wireshark display filter]' % sys.argv[0]
+  sys.exit(1)
+
+n = len(sys.argv)
+if n != 2 and n != 3:
+  usage()
+
+capture = sys.argv[1]
+if n == 3:
+  dfilter = sys.argv[2]
+else:
+  dfilter = 'sip'
+
+# start tshark subprocess and prepare a pipe to which it will write stdout
+shark = subprocess.Popen(['tshark', '-n', '-r', capture, dfilter], stdout=subprocess.PIPE)
+sharkout = shark.stdout
+
+# list of messages displayed by tshark
+messages = []
+
+while True:
+  line = sharkout.readline()
+  # eof encountered
+  if len(line) == 0:
+    break
+
+  regex = re.compile('^ *(\d+) +(\d+\.\d+) +(\d+\.\d+\.\d+\.\d+) -> (\d+\.\d+\.\d+\.\d+) (.*?)$')
+
+  ret = regex.match(line)
+  if ret != None:
+    msg = {}
+    msg['num'] = ret.group(1)
+    msg['date'] = ret.group(2)
+    msg['src'] = ret.group(3)
+    msg['dst'] = ret.group(4)
+    msg['msg'] = ret.group(5)
+    messages.append(msg)
+  else:
+    print >>sys.stderr, "line '%s' not handled by regex !" % line
+    break
+
+# synchronously wait for tshark termination
+shark.wait()
+if shark.returncode != 0:
+  print >>sys.stderr, "tshark returned error code %d" % shark.returncode
+  sys.exit(1)
+
+# print msc generated file on stdout
+print("msc {")
+
+# list of entity
+# contains IP addresses used IP datagrams exchanged in this capture
+entities = []
+for msg in messages:
+  if msg['src'] not in entities:
+    entities.append(msg['src'])
+  if msg['dst'] not in entities:
+    entities.append(msg['dst'])
+
+# dots are not allowed in entity grammar (see mscgen grammar)
+# thus, name IP address by u%d, where %d is replaced by their index in the list
+line = ''
+for i in range(0, len(entities)):
+  line += 'u%d[label=\"%s\"]' % (i,entities[i])
+  if i < len(entities)-1:
+    line += ','
+print("  %s;" % line)
+
+# add messages
+# a message is an arrow between src and dst (IP addresses)
+# and a label which is the line used by tshark to describe packet content
+for msg in messages:
+  src = entities.index(msg['src'])
+  dst = entities.index(msg['dst'])
+  if src < dst:
+    print("  u%d=>u%d [ label = \"%s\" ] ;" % (src, dst, msg['msg']))
+  else:
+    print("  u%d<=u%d [ label = \"%s\" ] ;" % (dst, src, msg['msg']))
+
+print("}") 
