@@ -14,7 +14,7 @@ if n != 2 and n != 3:
 
 capture = sys.argv[1]
 if n == 3:
-  dfilter = sys.argv[2]
+  dfilter = 'ip and (%s)' % sys.argv[2]
 else:
   dfilter = 'sip'
 
@@ -51,6 +51,11 @@ shark.wait()
 if shark.returncode != 0:
   print >>sys.stderr, "tshark returned error code %d" % shark.returncode
   sys.exit(1)
+
+# produce a valid msc if entities list is empty
+if len(entities) > 0:
+  print >>sys.stderr, "tshark returned no packet"
+  sys.exit(0)
 
 # print msc generated file on stdout
 print("msc {")
