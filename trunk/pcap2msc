@@ -53,7 +53,7 @@ if shark.returncode != 0:
   sys.exit(1)
 
 # produce a valid msc if entities list is empty
-if len(entities) > 0:
+if len(entities) == 0:
   print >>sys.stderr, "tshark returned no packet"
   sys.exit(0)
 
