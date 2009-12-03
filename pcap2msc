@@ -16,7 +16,7 @@ capture = sys.argv[1]
 if n == 3:
   dfilter = 'ip and (%s)' % sys.argv[2]
 else:
-  dfilter = 'sip'
+  dfilter = 'ip'
 
 # start tshark subprocess and prepare a pipe to which it will write stdout
 shark = subprocess.Popen(['tshark', '-n', '-r', capture, dfilter], stdout=subprocess.PIPE)
