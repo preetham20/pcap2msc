@@ -5,21 +5,24 @@ import subprocess
 import re
 
 def usage():
-  print >>sys.stderr, '%s: <.pcap> [wireshark display filter]' % sys.argv[0]
+  print >>sys.stderr, '%s: <.pcap> [tshark additional options] "wireshark display filter"' % sys.argv[0]
   sys.exit(1)
 
 n = len(sys.argv)
-if n != 2 and n != 3:
+if n < 3:
   usage()
 
 capture = sys.argv[1]
-if n == 3:
-  dfilter = 'ip and (%s)' % sys.argv[2]
-else:
-  dfilter = 'ip'
+dfilter = sys.argv[-1]
+
+tshark_cmd = [ 'tshark', '-n' ]
+tshark_cmd.extend(sys.argv[2:-1])
+tshark_cmd.append('-r')
+tshark_cmd.append(sys.argv[1])
+tshark_cmd.append(sys.argv[-1])
 
 # start tshark subprocess and prepare a pipe to which it will write stdout
-shark = subprocess.Popen(['tshark', '-n', '-r', capture, dfilter], stdout=subprocess.PIPE)
+shark = subprocess.Popen(tshark_cmd, stdout=subprocess.PIPE)
 sharkout = shark.stdout
 
 # list of messages displayed by tshark
@@ -52,14 +55,6 @@ if shark.returncode != 0:
   print >>sys.stderr, "tshark returned error code %d" % shark.returncode
   sys.exit(1)
 
-# produce a valid msc if entities list is empty
-if len(entities) == 0:
-  print >>sys.stderr, "tshark returned no packet"
-  sys.exit(0)
-
-# print msc generated file on stdout
-print("msc {")
-
 # list of entity
 # contains IP addresses used IP datagrams exchanged in this capture
 entities = []
@@ -68,6 +63,9 @@ for msg in messages:
     entities.append(msg['src'])
   if msg['dst'] not in entities:
     entities.append(msg['dst'])
+
+# print msc generated file on stdout
+print("msc {")
 
 # dots are not allowed in entity grammar (see mscgen grammar)
 # thus, name IP address by u%d, where %d is replaced by their index in the list
