@@ -2,4 +2,4 @@ pcap2msc uses tshark to generate a mscgen scenario.
 
 Use mscgen to draw message sequence chart.
 
-pcap2msc ./avses-tosip.cap | mscgen -T png -o avses-tosip.png
+pcap2msc ./avses-tosip.cap "sip" | mscgen -T png -o avses-tosip.png
